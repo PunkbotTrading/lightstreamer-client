@@ -440,7 +440,7 @@ impl LightstreamerClient {
         let mut subscription_id: usize = 0;
         let mut subscription_item_updates: HashMap<usize, HashMap<usize, ItemUpdate>> =
             HashMap::new();
-        'outer: loop {
+        loop {
             tokio::select! {
                 message = read_stream.next() => {
                     match message {
@@ -847,19 +847,6 @@ impl LightstreamerClient {
                     // Process subscription requests.
                     if subscription_request.subscription.is_some()
                     {
-                        // we may have an identical subscription, no deed for one more
-                        for subscription in self.subscriptions.iter_mut()
-                        {
-                            if subscription.get_mode() == subscription_request.subscription.as_ref().unwrap().get_mode()
-                                && subscription.get_items().unwrap_or(&vec![]) == subscription_request.subscription.as_ref().unwrap().get_items().unwrap_or(&vec![])
-                                && subscription.get_fields().unwrap_or(&vec![]) == subscription_request.subscription.as_ref().unwrap().get_fields().unwrap_or(&vec![])
-                            {
-                                subscription.refcount += 1;
-                                subscription_request.subscription.unwrap().id_sender.send(subscription.id)?;
-                                continue 'outer;
-                            }
-                        }
-
                         self.subscriptions.push(subscription_request.subscription.unwrap());
 
                         // if we are not connected yet, we will subscribe later
@@ -902,18 +889,9 @@ impl LightstreamerClient {
                             .await?;
                         
                         self.make_log( Level::INFO, &format!("Sent unsubscription request: '{}'", encoded_params) );
-
-                        if let Some(subscription) = self.subscriptions.iter_mut().find(|s| s.id == unsubscription_id) {
-                            if subscription.refcount > 1 {
-                                subscription.refcount -= 1;
-                                self.make_log( Level::INFO, &format!("Unsubscription request for subscription ID: {} has been processed, but the subscription is still active due to refcount.", unsubscription_id));
-                            } else {
-                                // Remove the subscription by id
-                                self.make_log( Level::INFO, &format!("Unsubscription request for subscription ID: {} has been processed. Ref count is now 0, removing.", unsubscription_id));
-                                self.subscriptions.retain(|s| s.id != unsubscription_id);
-                            }
-                        }
-
+                        
+                        self.subscriptions.retain(|s| s.id != unsubscription_id);
+                        
                         if self.subscriptions.is_empty()
                         {
                             self.make_log( Level::INFO, &"No more subscriptions, disconnecting".to_string() );

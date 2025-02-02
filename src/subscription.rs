@@ -55,7 +55,7 @@ impl ToString for SubscriptionMode {
 /// It contains subscription details and the listeners needed to process the real-time data.
 pub struct Subscription {
     /// The subscription mode for the items, required by Lightstreamer Server.
-    pub(crate) mode: SubscriptionMode,
+    mode: SubscriptionMode,
     /// An array of items to be subscribed to through Lightstreamer server.
     items: Option<Vec<String>>,
     /// An "Item Group" identifier representing a list of items.
@@ -96,8 +96,6 @@ pub struct Subscription {
     pub(crate) id_sender: Sender<usize>,
     /// A channel receiver to receive the subscription ID from the Lightstreamer client.
     pub(crate) id_receiver: Receiver<usize>,
-    /// Refcount. We do not want multiple subscriptions that are exactly the same.
-    pub(crate) refcount: usize
 }
 
 impl Subscription {
@@ -142,8 +140,7 @@ impl Subscription {
             is_subscribed: false,
             id: 0,
             id_sender,
-            id_receiver,
-            refcount: 1usize
+            id_receiver
         })
     }
 
