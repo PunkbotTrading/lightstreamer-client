@@ -322,7 +322,7 @@ impl LightstreamerClient {
     ///
     /// See also `ConnectionDetails.setServerAddress()`
     #[instrument]
-    pub async fn connect(&mut self, shutdown_signal: Arc<Notify>) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub async fn connect(&mut self, shutdown_signal: Arc<Notify>, connected_notify: Arc<Notify>) -> Result<(), Box<dyn Error + Send + Sync>> {
         // Check if the server address is configured.
         if self.server_address.is_none() {
             return Err(Box::new(IllegalStateException::new(
@@ -466,13 +466,23 @@ impl LightstreamerClient {
                                     //
                                     "conok" => {
                                         is_connected = true;
+                                        connected_notify.notify_one();
                                         if let Some(session_id) = submessage_fields.get(1).as_deref() {
                                             self.make_log( Level::DEBUG, &format!("Session creation confirmed by server: {}", clean_text) );
                                             self.make_log( Level::DEBUG, &format!("Session created with ID: {:?}", session_id) );
                                             //
-                                            // Subscribe to the desired items.
+                                            // New session: reset the subscription ID counter and clear
+                                            // stale per-item merged state so the first update of each
+                                            // item is treated as a fresh snapshot.
                                             //
-                                            while let Some(subscription) = self.subscriptions.get_mut(subscription_id) {
+                                            subscription_item_updates.clear();
+                                            //
+                                            // Re-subscribe ALL known subscriptions. Use a separate index
+                                            // so that `subscription_id` is purely an ID counter and is
+                                            // never confused with an array index.
+                                            //
+                                            for sub_index in 0..self.subscriptions.len() {
+                                                let subscription = &mut self.subscriptions[sub_index];
                                                 //
                                                 // Gather all the necessary subscription parameters.
                                                 //
