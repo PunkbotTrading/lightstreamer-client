@@ -34,7 +34,6 @@ pub trait SubscriptionListener: Send {
     /// - `item_pos`: 1-based position of the item within the "Item List" or "Item Group".
     fn on_clear_snapshot(&mut self, _item_name: Option<&str>, _item_pos: usize) {
         // Default implementation does nothing.
-        unimplemented!("Implement on_clear_snapshot method for SubscriptionListener.");
     }
 
     /// Event handler that is called by Lightstreamer to notify that, due to internal resource
@@ -57,9 +56,6 @@ pub trait SubscriptionListener: Send {
     /// - `Subscription::set_command_second_level_field_schema()`
     fn on_command_second_level_item_lost_updates(&mut self, _lost_updates: u32, _key: &str) {
         // Default implementation does nothing.
-        unimplemented!(
-            "Implement on_command_second_level_item_lost_updates method for SubscriptionListener."
-        );
     }
 
     /// Event handler that is called when the Server notifies an error on a second-level subscription.
@@ -98,9 +94,6 @@ pub trait SubscriptionListener: Send {
         _key: &str,
     ) {
         // Default implementation does nothing.
-        unimplemented!(
-            "Implement on_command_second_level_subscription_error method for SubscriptionListener."
-        );
     }
 
     /// Event handler that is called by Lightstreamer to notify that all snapshot events for an item
@@ -128,7 +121,6 @@ pub trait SubscriptionListener: Send {
     /// - `ItemUpdate::is_snapshot()`
     fn on_end_of_snapshot(&mut self, _item_name: Option<&str>, _item_pos: usize) {
         // Default implementation does nothing.
-        unimplemented!("Implement on_end_of_snapshot method for SubscriptionListener.");
     }
 
     /// Event handler that is called by Lightstreamer to notify that, due to internal resource
@@ -159,7 +151,6 @@ pub trait SubscriptionListener: Send {
         _lost_updates: u32,
     ) {
         // Default implementation does nothing.
-        unimplemented!("Implement on_item_lost_updates method for SubscriptionListener.");
     }
 
     /// Event handler that is called by Lightstreamer each time an update pertaining to an item
@@ -172,7 +163,6 @@ pub trait SubscriptionListener: Send {
     ///   iterate through all or new values.
     fn on_item_update(&self, _update: &ItemUpdate) {
         // Default implementation does nothing.
-        unimplemented!("Implement on_item_update method for SubscriptionListener.");
     }
 
     /// Event handler that receives a notification when the `SubscriptionListener` instance is
@@ -211,7 +201,6 @@ pub trait SubscriptionListener: Send {
     ///   rare cases, when the frequency can no longer be determined.
     fn on_real_max_frequency(&mut self, _frequency: Option<f64>) {
         // Default implementation does nothing.
-        unimplemented!("Implement on_real_max_frequency method for SubscriptionListener.");
     }
 
     /// Event handler that is called by Lightstreamer to notify that a Subscription has been successfully
@@ -267,7 +256,6 @@ pub trait SubscriptionListener: Send {
     /// - `ConnectionDetails::set_adapter_set()`
     fn on_subscription_error(&mut self, _code: i32, _message: Option<&str>) {
         // Default implementation does nothing.
-        unimplemented!("Implement on_subscription_error method for SubscriptionListener.");
     }
 
     /// Event handler that is called by Lightstreamer to notify that a Subscription has been successfully

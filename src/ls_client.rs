@@ -440,6 +440,9 @@ impl LightstreamerClient {
         let mut subscription_id: usize = 0;
         let mut subscription_item_updates: HashMap<usize, HashMap<usize, ItemUpdate>> =
             HashMap::new();
+        // Maps control request IDs to subscription IDs so 'reqerr' responses can be
+        // attributed to the subscription they belong to.
+        let mut request_to_subscription: HashMap<usize, usize> = HashMap::new();
         loop {
             tokio::select! {
                 message = read_stream.next() => {
@@ -457,9 +460,47 @@ impl LightstreamerClient {
                                     //
                                     // Errors from server.
                                     //
-                                    "conerr" | "reqerr" => {
+                                    "conerr" => {
                                         self.make_log( Level::ERROR, &format!("Received connection error from Lightstreamer server: {}", clean_text) );
                                         break;
+                                    },
+                                    "reqerr" => {
+                                        // A control request was rejected by the server (e.g. an item in a
+                                        // chart subscription is not permitted on this account). Notify the
+                                        // affected subscription's listeners and drop it, so healthy
+                                        // subscriptions keep streaming and reconnects do not resubscribe
+                                        // the rejected request.
+                                        let req_id = submessage_fields.get(1).and_then(|field| field.parse::<usize>().ok());
+                                        let code = submessage_fields.get(2).and_then(|field| field.parse::<i32>().ok()).unwrap_or(-1);
+                                        let message = submessage_fields
+                                            .get(3..)
+                                            .map(|rest| rest.join(","))
+                                            .filter(|text| !text.is_empty());
+
+                                        match req_id.and_then(|id| request_to_subscription.get(&id).copied())
+                                        {
+                                            Some(sub_id) =>
+                                            {
+                                                if let Some(subscription) = self.subscriptions.iter().find(|s| s.id == sub_id) {
+                                                    self.make_log( Level::ERROR, &format!(
+                                                        "Subscription rejected by Lightstreamer server for items {:?}: code {}, message '{}'",
+                                                        subscription.get_items().cloned().unwrap_or_default(),
+                                                        code,
+                                                        message.as_deref().unwrap_or("none")
+                                                    ) );
+                                                }
+
+                                                if let Some(subscription) = self.subscriptions.iter_mut().find(|s| s.id == sub_id) {
+                                                    subscription.on_subscription_error(code, message.as_deref());
+                                                }
+
+                                                self.subscriptions.retain(|s| s.id != sub_id);
+                                            },
+                                            None =>
+                                            {
+                                                self.make_log( Level::ERROR, &format!("Received request error from Lightstreamer server: {}", clean_text) );
+                                            },
+                                        }
                                     },
                                     //
                                     // Session created successfully.
@@ -489,6 +530,7 @@ impl LightstreamerClient {
                                                 subscription_id += 1;
                                                 request_id += 1;
                                                 subscription.id = subscription_id;
+                                                request_to_subscription.insert(request_id, subscription_id);
                                                 subscription.id_sender.send(subscription_id)?;
 
                                                 let encoded_params = match Self::get_subscription_params(subscription, request_id)
@@ -866,6 +908,7 @@ impl LightstreamerClient {
 
                         subscription_id += 1;
                         self.subscriptions.last_mut().unwrap().id = subscription_id;
+                        request_to_subscription.insert(request_id, subscription_id);
                         self.subscriptions.last().unwrap().id_sender.send(subscription_id)?;
 
                         let encoded_params = match Self::get_subscription_params(self.subscriptions.last().unwrap(), request_id)

@@ -192,6 +192,15 @@ impl Subscription {
         &self.listeners
     }
 
+    /// Dispatches a subscription error notification to all listeners of this Subscription.
+    pub fn on_subscription_error(&mut self, code: i32, message: Option<&str>)
+    {
+        for listener in &mut self.listeners
+        {
+            listener.on_subscription_error(code, message);
+        }
+    }
+
     /// Inquiry method that can be used to read the mode specified for this Subscription.
     ///
     /// # Lifecycle
